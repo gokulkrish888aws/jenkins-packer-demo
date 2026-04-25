@@ -1,5 +1,5 @@
 output "jenkins-ip" {
-  value = [aws_instance.jenkins-instance.*.public_ip]
+  value = [aws_instance.jenkins-instance.public_ip]
 }
 
 output "app-ip" {

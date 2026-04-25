@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # volume setup
 vgchange -ay
@@ -24,26 +25,56 @@ mkdir -p /var/lib/jenkins
 echo '/dev/data/volume1 /var/lib/jenkins ext4 defaults 0 0' >> /etc/fstab
 mount /var/lib/jenkins
 
-# jenkins repository
-wget -q -O - https://pkg.jenkins.io/debian-stable/jenkins.io.key | sudo apt-key add -
-echo "deb http://pkg.jenkins.io/debian-stable binary/" >> /etc/apt/sources.list
-apt-get update
+# Install dependencies
+echo "Installing dependencies..."
+apt-get install -y python3 openjdk-21-jdk awscli unzip
 
-# install dependencies
-apt-get install -y python3 openjdk-11-jdk awscli
-# install jenkins
-apt-get install -y jenkins=${JENKINS_VERSION} unzip
+# Install Jenkins manually (bypass repository issues)
+echo "Installing Jenkins..."
+wget -q https://get.jenkins.io/war-stable/latest/jenkins.war -O /opt/jenkins.war
+useradd -m -s /bin/bash jenkins 2>/dev/null || true
+mkdir -p /var/lib/jenkins
+chown jenkins:jenkins /var/lib/jenkins /opt/jenkins.war
 
-# install terraform
-wget -q https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip \
-&& unzip -o terraform_${TERRAFORM_VERSION}_linux_amd64.zip -d /usr/local/bin \
-&& rm terraform_${TERRAFORM_VERSION}_linux_amd64.zip
+# Create systemd service for Jenkins
+tee /etc/systemd/system/jenkins.service > /dev/null << 'EOF'
+[Unit]
+Description=Jenkins Continuous Integration Server
+After=network.target
 
-# install packer
-cd /usr/local/bin
-wget -q https://releases.hashicorp.com/packer/0.10.2/packer_0.10.2_linux_amd64.zip
-unzip packer_0.10.2_linux_amd64.zip
-# clean up
+[Service]
+Type=simple
+User=jenkins
+Group=jenkins
+Environment=JENKINS_HOME=/var/lib/jenkins
+ExecStart=/usr/bin/java -jar /opt/jenkins.war --httpPort=8080
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+systemctl enable jenkins
+systemctl start jenkins
+apt-get install -y jenkins
+
+# Install Terraform
+echo "Installing Terraform ${TERRAFORM_VERSION}..."
+wget -q https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip -O /tmp/terraform.zip
+unzip -o /tmp/terraform.zip -d /usr/local/bin/
+rm -f /tmp/terraform.zip
+terraform --version
+
+# Install Packer
+echo "Installing Packer ${PACKER_VERSION}..."
+wget -q https://releases.hashicorp.com/packer/${PACKER_VERSION}/packer_${PACKER_VERSION}_linux_amd64.zip -O /tmp/packer.zip
+unzip -o /tmp/packer.zip -d /usr/local/bin/
+rm -f /tmp/packer.zip
+packer --version
+
+# Clean up
+echo "Cleaning up..."
 apt-get clean
-rm terraform_${TERRAFORM_VERSION}_linux_amd64.zip
-rm packer_0.10.2_linux_amd64.zip
+
+echo "Installation complete!"

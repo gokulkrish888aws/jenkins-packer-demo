@@ -20,3 +20,6 @@ fi
 cat > amivar.tf <<EOF
 variable "AMI_ID" { default = "${AMI_ID}" }
 EOF
+
+#Write to s3
+aws s3 cp amivar.tf s3://terraform-state-kt5oc71b/amivar.tf
