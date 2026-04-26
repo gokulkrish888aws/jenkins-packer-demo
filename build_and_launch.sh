@@ -1,3 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Ensure packer is installed (install once if missing)
+if ! command -v packer >/dev/null 2>&1; then
+	echo "packer not found; installing via brew..."
+	brew install packer
+fi
+
 # Run Packer in machine-readable mode and save output for inspection
 packer build -machine-readable packer-demo.json | tee packer-mr.log
 
