@@ -1,4 +1,4 @@
-variable "APP_INSTANCE_AMI" {
+variable "AMI_ID" {
   default = ""
 }
 
