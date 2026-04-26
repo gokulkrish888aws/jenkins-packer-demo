@@ -8,6 +8,7 @@ if ! command -v packer >/dev/null 2>&1; then
 fi
 
 # Run Packer in machine-readable mode and save output for inspection
+packer plugins install github.com/hashicorp/amazon
 packer build -machine-readable packer-demo.json | tee packer-mr.log
 
 # Extract the artifact field (last CSV field on the artifact line)
